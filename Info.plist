@@ -37,5 +37,13 @@
     -->
     <key>NSAccessibilityUsageDescription</key>
     <string>MacIsland uses keyboard shortcuts to control media playback and volume.</string>
+
+    <!-- Calendar access for upcoming event display -->
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>MacIsland shows your next calendar event and meeting join buttons.</string>
+
+    <!-- Location for Wi-Fi SSID access (CoreWLAN requires location on macOS 14+) -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>MacIsland needs location access to display your Wi-Fi network name.</string>
 </dict>
 </plist>

@@ -76,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .volumeDown:
                 let current = vm.volumeService.volume
                 vm.setVolume(max(current - 0.05, 0.0))
+            case .toggleTimer:
+                vm.timerService.togglePause()
+            case .togglePomodoro:
+                vm.pomodoroService.togglePause()
             }
         }
         self.hotkeyService = hotkeys
@@ -107,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showAbout() {
         let alert = NSAlert()
         alert.messageText = "MacIsland"
-        alert.informativeText = "Dynamic Island for macOS.\nPhase 2 — Full Controls\n\nOption+Space: Play/Pause\nOption+Arrows: Skip/Volume\n\nmacOS Sonoma 14.0+"
+        alert.informativeText = "Dynamic Island for macOS.\n\nOption+Space: Play/Pause\nOption+Arrows: Skip/Volume\nOption+T: Timer\nOption+P: Pomodoro\n\nmacOS Sonoma 14.0+"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()

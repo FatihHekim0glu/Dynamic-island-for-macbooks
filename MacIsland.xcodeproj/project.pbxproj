@@ -21,6 +21,27 @@
 		A10000010000000000000012 /* BrightnessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000013; };
 		A10000010000000000000013 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000014; };
 		A10000010000000000000014 /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000015; };
+		B10000010000000000000001 /* BatteryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000001; };
+		B10000010000000000000002 /* BluetoothBatteryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000002; };
+		B10000010000000000000003 /* CalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000003; };
+		B10000010000000000000004 /* FocusService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000004; };
+		B10000010000000000000005 /* IslandContentProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000005; };
+		B10000010000000000000006 /* NetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000006; };
+		B10000010000000000000007 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000007; };
+		B10000010000000000000008 /* PomodoroService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000008; };
+		B10000010000000000000009 /* PrivacyIndicatorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000009; };
+		B10000010000000000000010 /* SystemStatsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000010; };
+		B10000010000000000000011 /* TimerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000011; };
+		B10000010000000000000012 /* AirPodsBatteryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000012; };
+		B10000010000000000000013 /* BatteryIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000013; };
+		B10000010000000000000014 /* CalendarCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000014; };
+		B10000010000000000000015 /* CalendarExpandedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000015; };
+		B10000010000000000000016 /* NotificationBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000016; };
+		B10000010000000000000017 /* PomodoroCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000017; };
+		B10000010000000000000018 /* PomodoroExpandedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000018; };
+		B10000010000000000000019 /* SystemStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000019; };
+		B10000010000000000000020 /* TimerCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000020; };
+		B10000010000000000000021 /* TimerExpandedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000010000000000000021; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +61,27 @@
 		A20000010000000000000014 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
 		A20000010000000000000015 /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		A30000010000000000000001 /* MacIsland.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacIsland.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B20000010000000000000001 /* BatteryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryService.swift; sourceTree = "<group>"; };
+		B20000010000000000000002 /* BluetoothBatteryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothBatteryService.swift; sourceTree = "<group>"; };
+		B20000010000000000000003 /* CalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarService.swift; sourceTree = "<group>"; };
+		B20000010000000000000004 /* FocusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusService.swift; sourceTree = "<group>"; };
+		B20000010000000000000005 /* IslandContentProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IslandContentProvider.swift; sourceTree = "<group>"; };
+		B20000010000000000000006 /* NetworkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkService.swift; sourceTree = "<group>"; };
+		B20000010000000000000007 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		B20000010000000000000008 /* PomodoroService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroService.swift; sourceTree = "<group>"; };
+		B20000010000000000000009 /* PrivacyIndicatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyIndicatorService.swift; sourceTree = "<group>"; };
+		B20000010000000000000010 /* SystemStatsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatsService.swift; sourceTree = "<group>"; };
+		B20000010000000000000011 /* TimerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerService.swift; sourceTree = "<group>"; };
+		B20000010000000000000012 /* AirPodsBatteryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPodsBatteryView.swift; sourceTree = "<group>"; };
+		B20000010000000000000013 /* BatteryIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryIndicatorView.swift; sourceTree = "<group>"; };
+		B20000010000000000000014 /* CalendarCompactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarCompactView.swift; sourceTree = "<group>"; };
+		B20000010000000000000015 /* CalendarExpandedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarExpandedView.swift; sourceTree = "<group>"; };
+		B20000010000000000000016 /* NotificationBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBubbleView.swift; sourceTree = "<group>"; };
+		B20000010000000000000017 /* PomodoroCompactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroCompactView.swift; sourceTree = "<group>"; };
+		B20000010000000000000018 /* PomodoroExpandedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroExpandedView.swift; sourceTree = "<group>"; };
+		B20000010000000000000019 /* SystemStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatsView.swift; sourceTree = "<group>"; };
+		B20000010000000000000020 /* TimerCompactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerCompactView.swift; sourceTree = "<group>"; };
+		B20000010000000000000021 /* TimerExpandedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerExpandedView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +133,16 @@
 				A20000010000000000000006 /* ExpandedIslandView.swift */,
 				A20000010000000000000007 /* WaveformView.swift */,
 				A20000010000000000000015 /* MarqueeText.swift */,
+				B20000010000000000000012 /* AirPodsBatteryView.swift */,
+				B20000010000000000000013 /* BatteryIndicatorView.swift */,
+				B20000010000000000000014 /* CalendarCompactView.swift */,
+				B20000010000000000000015 /* CalendarExpandedView.swift */,
+				B20000010000000000000016 /* NotificationBubbleView.swift */,
+				B20000010000000000000017 /* PomodoroCompactView.swift */,
+				B20000010000000000000018 /* PomodoroExpandedView.swift */,
+				B20000010000000000000019 /* SystemStatsView.swift */,
+				B20000010000000000000020 /* TimerCompactView.swift */,
+				B20000010000000000000021 /* TimerExpandedView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -111,6 +163,17 @@
 				A20000010000000000000012 /* VolumeService.swift */,
 				A20000010000000000000013 /* BrightnessService.swift */,
 				A20000010000000000000014 /* HotkeyService.swift */,
+				B20000010000000000000001 /* BatteryService.swift */,
+				B20000010000000000000002 /* BluetoothBatteryService.swift */,
+				B20000010000000000000003 /* CalendarService.swift */,
+				B20000010000000000000004 /* FocusService.swift */,
+				B20000010000000000000005 /* IslandContentProvider.swift */,
+				B20000010000000000000006 /* NetworkService.swift */,
+				B20000010000000000000007 /* NotificationService.swift */,
+				B20000010000000000000008 /* PomodoroService.swift */,
+				B20000010000000000000009 /* PrivacyIndicatorService.swift */,
+				B20000010000000000000010 /* SystemStatsService.swift */,
+				B20000010000000000000011 /* TimerService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -189,6 +252,27 @@
 				A10000010000000000000012 /* BrightnessService.swift in Sources */,
 				A10000010000000000000013 /* HotkeyService.swift in Sources */,
 				A10000010000000000000014 /* MarqueeText.swift in Sources */,
+				B10000010000000000000001 /* BatteryService.swift in Sources */,
+				B10000010000000000000002 /* BluetoothBatteryService.swift in Sources */,
+				B10000010000000000000003 /* CalendarService.swift in Sources */,
+				B10000010000000000000004 /* FocusService.swift in Sources */,
+				B10000010000000000000005 /* IslandContentProvider.swift in Sources */,
+				B10000010000000000000006 /* NetworkService.swift in Sources */,
+				B10000010000000000000007 /* NotificationService.swift in Sources */,
+				B10000010000000000000008 /* PomodoroService.swift in Sources */,
+				B10000010000000000000009 /* PrivacyIndicatorService.swift in Sources */,
+				B10000010000000000000010 /* SystemStatsService.swift in Sources */,
+				B10000010000000000000011 /* TimerService.swift in Sources */,
+				B10000010000000000000012 /* AirPodsBatteryView.swift in Sources */,
+				B10000010000000000000013 /* BatteryIndicatorView.swift in Sources */,
+				B10000010000000000000014 /* CalendarCompactView.swift in Sources */,
+				B10000010000000000000015 /* CalendarExpandedView.swift in Sources */,
+				B10000010000000000000016 /* NotificationBubbleView.swift in Sources */,
+				B10000010000000000000017 /* PomodoroCompactView.swift in Sources */,
+				B10000010000000000000018 /* PomodoroExpandedView.swift in Sources */,
+				B10000010000000000000019 /* SystemStatsView.swift in Sources */,
+				B10000010000000000000020 /* TimerCompactView.swift in Sources */,
+				B10000010000000000000021 /* TimerExpandedView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

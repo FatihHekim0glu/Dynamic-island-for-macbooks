@@ -24,6 +24,8 @@ enum HotkeyAction {
     case previousTrack
     case volumeUp
     case volumeDown
+    case toggleTimer
+    case togglePomodoro
 }
 
 // MARK: - HotkeyService
@@ -94,6 +96,10 @@ final class HotkeyService {
             onAction?(.volumeUp)
         case 125:  // Down arrow
             onAction?(.volumeDown)
+        case 17:   // T key
+            onAction?(.toggleTimer)
+        case 35:   // P key
+            onAction?(.togglePomodoro)
         default:
             break
         }
