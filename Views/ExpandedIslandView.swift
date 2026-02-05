@@ -11,6 +11,15 @@ import SwiftUI
 struct ExpandedIslandView: View {
 
     @ObservedObject var viewModel: IslandViewModel
+    // Observe sub-services directly so SwiftUI redraws when volume/brightness change externally.
+    @ObservedObject var volumeService: VolumeService
+    @ObservedObject var brightnessService: BrightnessService
+
+    init(viewModel: IslandViewModel) {
+        self.viewModel = viewModel
+        self.volumeService = viewModel.volumeService
+        self.brightnessService = viewModel.brightnessService
+    }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -141,7 +150,7 @@ struct ExpandedIslandView: View {
 
     /// Dynamic volume icon based on current level.
     private var volumeIcon: String {
-        let vol = viewModel.volumeService.volume
+        let vol = volumeService.volume
         if vol <= 0 { return "speaker.slash.fill" }
         if vol < 0.33 { return "speaker.wave.1.fill" }
         if vol < 0.66 { return "speaker.wave.2.fill" }
@@ -150,7 +159,7 @@ struct ExpandedIslandView: View {
 
     /// Dynamic brightness icon based on current level.
     private var brightnessIcon: String {
-        viewModel.brightnessService.brightness < 0.3
+        brightnessService.brightness < 0.3
             ? "sun.min.fill"
             : "sun.max.fill"
     }
@@ -167,7 +176,7 @@ struct ExpandedIslandView: View {
 
                 SliderView(
                     value: Binding(
-                        get: { viewModel.volumeService.volume },
+                        get: { volumeService.volume },
                         set: { viewModel.setVolume($0) }
                     ),
                     tintColor: .white
@@ -183,7 +192,7 @@ struct ExpandedIslandView: View {
 
                 SliderView(
                     value: Binding(
-                        get: { viewModel.brightnessService.brightness },
+                        get: { brightnessService.brightness },
                         set: { viewModel.setBrightness($0) }
                     ),
                     tintColor: .yellow

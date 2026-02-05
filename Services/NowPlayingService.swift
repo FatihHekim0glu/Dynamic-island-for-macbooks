@@ -89,6 +89,7 @@ final class NowPlayingService: ObservableObject {
         loadMRMediaRemote()
         startObserving()
         fetchNowPlaying()
+        print("[MacIsland] NowPlayingService init: info=\(getNowPlayingInfo != nil), playing=\(getIsPlaying != nil), send=\(sendCommand != nil), pid=\(getNowPlayingPID != nil)")
     }
 
     deinit {
@@ -207,36 +208,36 @@ final class NowPlayingService: ObservableObject {
     // MARK: - Fetch
 
     func fetchNowPlaying() {
-        // Fetch playback state.
-        getIsPlaying?(DispatchQueue.main) { [weak self] isPlaying in
-            Task { @MainActor [weak self] in
+        // Fetch track info first, then playback state.
+        // Flattened callback structure to avoid nested Task/weak-self failures.
+        getNowPlayingInfo?(DispatchQueue.main) { [weak self] info in
+            guard let self else { return }
+
+            let title = info[kMRMediaRemoteNowPlayingInfoTitle] as? String ?? ""
+            let artist = info[kMRMediaRemoteNowPlayingInfoArtist] as? String ?? ""
+            let album = info[kMRMediaRemoteNowPlayingInfoAlbum] as? String ?? ""
+
+            var artwork: NSImage? = nil
+            if let artworkData = info[kMRMediaRemoteNowPlayingInfoArtworkData] as? Data {
+                artwork = NSImage(data: artworkData)
+            }
+
+            // Now get playback state
+            self.getIsPlaying?(DispatchQueue.main) { [weak self] isPlaying in
                 guard let self else { return }
 
-                // Fetch track metadata.
-                self.getNowPlayingInfo?(DispatchQueue.main) { [weak self] info in
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
+                let newInfo = NowPlayingInfo(
+                    title: title,
+                    artist: artist,
+                    album: album,
+                    artwork: artwork,
+                    isPlaying: isPlaying
+                )
 
-                        let title = info[kMRMediaRemoteNowPlayingInfoTitle] as? String ?? ""
-                        let artist = info[kMRMediaRemoteNowPlayingInfoArtist] as? String ?? ""
-                        let album = info[kMRMediaRemoteNowPlayingInfoAlbum] as? String ?? ""
-
-                        var artwork: NSImage? = nil
-                        if let artworkData = info[kMRMediaRemoteNowPlayingInfoArtworkData] as? Data {
-                            artwork = NSImage(data: artworkData)
-                        }
-
-                        let newInfo = NowPlayingInfo(
-                            title: title,
-                            artist: artist,
-                            album: album,
-                            artwork: artwork,
-                            isPlaying: isPlaying
-                        )
-
-                        if self.nowPlaying != newInfo {
-                            self.nowPlaying = newInfo
-                        }
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    if self.nowPlaying != newInfo {
+                        self.nowPlaying = newInfo
                     }
                 }
             }
