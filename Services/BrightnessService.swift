@@ -1,16 +1,28 @@
 // BrightnessService.swift
 // MacIsland
 //
-// Manages built-in display brightness via IOKit (primary) with CoreDisplay fallback.
-// Uses IODisplayGetFloatParameter / IODisplaySetFloatParameter with
-// kIODisplayBrightnessKey — the stable IOKit approach.
-// Polls every 1s to sync with F1/F2 keys (no brightness notification API exists).
+// Manages built-in display brightness using a three-layer approach:
+//   1. DisplayServices.framework (private, most reliable on macOS 14+)
+//   2. IOKit IODisplaySetFloatParameter (legacy, works on some configs)
+//   3. CoreDisplay (private, older fallback)
+// Polls every 0.5s to sync with F1/F2 key changes (no notification API exists).
 
 import Foundation
 import CoreGraphics
 import IOKit
 import IOKit.graphics
 import Combine
+
+// MARK: - DisplayServices Typedefs (Primary)
+
+private typealias DisplayServicesGetBrightnessFunc =
+    @convention(c) (CGDirectDisplayID, UnsafeMutablePointer<Float>) -> Int32
+
+private typealias DisplayServicesSetBrightnessFunc =
+    @convention(c) (CGDirectDisplayID, Float) -> Int32
+
+private typealias DisplayServicesCanChangeBrightnessFunc =
+    @convention(c) (CGDirectDisplayID) -> Bool
 
 // MARK: - CoreDisplay Fallback Typedefs
 
@@ -27,23 +39,34 @@ final class BrightnessService: ObservableObject {
 
     @Published var brightness: Float = 0.5
 
-    private var pollTimer: Timer?
+    private nonisolated(unsafe) var pollTimer: Timer?
 
-    // IOKit service port for the built-in display
-    private var displayService: io_service_t = 0
+    // DisplayServices (primary)
+    private var dsGetBrightness: DisplayServicesGetBrightnessFunc?
+    private var dsSetBrightness: DisplayServicesSetBrightnessFunc?
+    private var dsCanChangeBrightness: DisplayServicesCanChangeBrightnessFunc?
+    private var useDisplayServices: Bool = false
+
+    // IOKit (first fallback)
+    private nonisolated(unsafe) var displayService: io_service_t = 0
     private var useIOKit: Bool = false
 
-    // CoreDisplay fallback
+    // CoreDisplay (second fallback)
     private var cdSetBrightness: CoreDisplay_Display_SetBrightnessFunc?
     private var cdGetBrightness: CoreDisplay_Display_GetBrightnessFunc?
     private var useCoreDisplay: Bool = false
 
     init() {
-        resolveDisplayService()
-        loadCoreDisplayFallback()
+        loadDisplayServices()
+        if !useDisplayServices {
+            resolveIOKitDisplayService()
+        }
+        if !useDisplayServices && !useIOKit {
+            loadCoreDisplayFallback()
+        }
         readCurrentBrightness()
         startPolling()
-        print("[MacIsland] Brightness: IOKit=\(useIOKit), CoreDisplay=\(useCoreDisplay), initial=\(brightness)")
+        print("[MacIsland] Brightness: DisplayServices=\(useDisplayServices), IOKit=\(useIOKit), CoreDisplay=\(useCoreDisplay), initial=\(brightness)")
     }
 
     deinit {
@@ -53,9 +76,47 @@ final class BrightnessService: ObservableObject {
         }
     }
 
-    // MARK: - IOKit Display Service
+    // MARK: - DisplayServices (Primary — macOS 14+)
 
-    private func resolveDisplayService() {
+    private func loadDisplayServices() {
+        let paths = [
+            "/System/Library/PrivateFrameworks/DisplayServices.framework",
+            "/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices"
+        ]
+
+        for path in paths {
+            guard let handle = dlopen(path, RTLD_LAZY) else { continue }
+
+            if let getPtr = dlsym(handle, "DisplayServicesGetBrightness"),
+               let setPtr = dlsym(handle, "DisplayServicesSetBrightness") {
+
+                dsGetBrightness = unsafeBitCast(getPtr, to: DisplayServicesGetBrightnessFunc.self)
+                dsSetBrightness = unsafeBitCast(setPtr, to: DisplayServicesSetBrightnessFunc.self)
+
+                // Optional — not all versions have this
+                if let canPtr = dlsym(handle, "DisplayServicesCanChangeBrightness") {
+                    dsCanChangeBrightness = unsafeBitCast(canPtr, to: DisplayServicesCanChangeBrightnessFunc.self)
+                }
+
+                // Test that it actually works
+                var testVal: Float = 0
+                let result = dsGetBrightness!(CGMainDisplayID(), &testVal)
+                if result == 0 {
+                    useDisplayServices = true
+                    print("[MacIsland] DisplayServices: loaded, current brightness = \(testVal)")
+                    return
+                } else {
+                    print("[MacIsland] DisplayServices: loaded but GetBrightness returned \(result)")
+                    dsGetBrightness = nil
+                    dsSetBrightness = nil
+                }
+            }
+        }
+    }
+
+    // MARK: - IOKit Display Service (Fallback 1)
+
+    private func resolveIOKitDisplayService() {
         var iterator: io_iterator_t = 0
         let matching = IOServiceMatching("IODisplayConnect")
 
@@ -66,36 +127,24 @@ final class BrightnessService: ObservableObject {
         }
         defer { IOObjectRelease(iterator) }
 
-        // Get the first display (built-in on MacBooks)
-        let service = IOIteratorNext(iterator)
-        if service != 0 {
-            // Verify we can actually read brightness from this service
+        var service = IOIteratorNext(iterator)
+        while service != 0 {
             var testValue: Float = 0
             let testResult = IODisplayGetFloatParameter(service, 0, kIODisplayBrightnessKey as CFString, &testValue)
             if testResult == kIOReturnSuccess {
                 displayService = service
                 useIOKit = true
                 print("[MacIsland] IOKit: Display service found, brightness = \(testValue)")
-            } else {
-                // Try more services
-                IOObjectRelease(service)
-                var nextService = IOIteratorNext(iterator)
-                while nextService != 0 {
-                    let r = IODisplayGetFloatParameter(nextService, 0, kIODisplayBrightnessKey as CFString, &testValue)
-                    if r == kIOReturnSuccess {
-                        displayService = nextService
-                        useIOKit = true
-                        print("[MacIsland] IOKit: Display service found (secondary), brightness = \(testValue)")
-                        break
-                    }
-                    IOObjectRelease(nextService)
-                    nextService = IOIteratorNext(iterator)
-                }
+                return
             }
+            IOObjectRelease(service)
+            service = IOIteratorNext(iterator)
         }
+
+        print("[MacIsland] IOKit: No display service supports brightness")
     }
 
-    // MARK: - CoreDisplay Fallback
+    // MARK: - CoreDisplay Fallback (Fallback 2)
 
     private func loadCoreDisplayFallback() {
         let paths = [
@@ -104,15 +153,31 @@ final class BrightnessService: ObservableObject {
         ]
 
         for path in paths {
-            guard let bundle = CFBundleCreate(kCFAllocatorDefault, URL(fileURLWithPath: path) as CFURL) else {
-                continue
+            guard let handle = dlopen(path, RTLD_LAZY) else { continue }
+
+            let setNames = [
+                "CoreDisplay_Display_SetUserBrightness",
+                "CoreDisplay_Display_SetBrightness"
+            ]
+            let getNames = [
+                "CoreDisplay_Display_GetUserBrightness",
+                "CoreDisplay_Display_GetBrightness"
+            ]
+
+            for setName in setNames {
+                if let ptr = dlsym(handle, setName) {
+                    cdSetBrightness = unsafeBitCast(ptr, to: CoreDisplay_Display_SetBrightnessFunc.self)
+                    print("[MacIsland] CoreDisplay: found \(setName)")
+                    break
+                }
             }
 
-            if let ptr = CFBundleGetFunctionPointerForName(bundle, "CoreDisplay_Display_SetUserBrightness" as CFString) {
-                cdSetBrightness = unsafeBitCast(ptr, to: CoreDisplay_Display_SetBrightnessFunc.self)
-            }
-            if let ptr = CFBundleGetFunctionPointerForName(bundle, "CoreDisplay_Display_GetUserBrightness" as CFString) {
-                cdGetBrightness = unsafeBitCast(ptr, to: CoreDisplay_Display_GetBrightnessFunc.self)
+            for getName in getNames {
+                if let ptr = dlsym(handle, getName) {
+                    cdGetBrightness = unsafeBitCast(ptr, to: CoreDisplay_Display_GetBrightnessFunc.self)
+                    print("[MacIsland] CoreDisplay: found \(getName)")
+                    break
+                }
             }
 
             if cdSetBrightness != nil && cdGetBrightness != nil {
@@ -126,12 +191,26 @@ final class BrightnessService: ObservableObject {
     // MARK: - Read
 
     func readCurrentBrightness() {
-        // Try IOKit first
+        // DisplayServices (primary)
+        if useDisplayServices, let getter = dsGetBrightness {
+            var value: Float = 0
+            let result = getter(CGMainDisplayID(), &value)
+            if result == 0 {
+                if abs(brightness - value) > 0.001 {
+                    brightness = value
+                }
+                return
+            }
+        }
+
+        // IOKit fallback
         if useIOKit {
             var value: Float = 0
             let result = IODisplayGetFloatParameter(displayService, 0, kIODisplayBrightnessKey as CFString, &value)
             if result == kIOReturnSuccess {
-                brightness = value
+                if abs(brightness - value) > 0.001 {
+                    brightness = value
+                }
                 return
             }
         }
@@ -140,7 +219,10 @@ final class BrightnessService: ObservableObject {
         if useCoreDisplay, let getter = cdGetBrightness {
             var value: Double = 0
             getter(CGMainDisplayID(), &value)
-            brightness = Float(value)
+            let fval = Float(value)
+            if abs(brightness - fval) > 0.001 {
+                brightness = fval
+            }
         }
     }
 
@@ -149,29 +231,46 @@ final class BrightnessService: ObservableObject {
     func setBrightness(_ value: Float) {
         let clamped = min(max(value, 0), 1)
 
-        // Try IOKit first
+        // DisplayServices (primary)
+        if useDisplayServices, let setter = dsSetBrightness {
+            let result = setter(CGMainDisplayID(), clamped)
+            if result == 0 {
+                brightness = clamped
+                return
+            }
+            print("[MacIsland] DisplayServices: SetBrightness failed with \(result)")
+        }
+
+        // IOKit fallback
         if useIOKit {
             let result = IODisplaySetFloatParameter(displayService, 0, kIODisplayBrightnessKey as CFString, clamped)
             if result == kIOReturnSuccess {
                 brightness = clamped
                 return
             }
+            print("[MacIsland] IOKit: SetBrightness failed with \(result)")
         }
 
         // CoreDisplay fallback
         if useCoreDisplay, let setter = cdSetBrightness {
             setter(CGMainDisplayID(), Double(clamped))
             brightness = clamped
+            return
         }
+
+        print("[MacIsland] Brightness: All methods failed to set brightness")
     }
 
     // MARK: - Polling
 
     private func startPolling() {
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.readCurrentBrightness()
             }
         }
+        // Add to .common mode so it fires even when tracking UI controls
+        RunLoop.main.add(timer, forMode: .common)
+        pollTimer = timer
     }
 }
