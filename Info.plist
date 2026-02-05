@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        LSUIElement = true
+        This is the critical flag that hides the app from the Dock and the Cmd+Tab switcher.
+        MacIsland is a background utility — it should never appear as a "running app" to the user.
+        The only UI surface is the floating island panel and the menu bar status item.
+    -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- Bundle identifiers -->
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleName</key>
+    <string>MacIsland</string>
+    <key>CFBundleDisplayName</key>
+    <string>MacIsland</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <!-- Minimum macOS version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+
+    <!--
+        NSAppleEventsUsageDescription
+        Required for the AppleScript-based volume/brightness control in Phase 1.
+        The user will see this prompt the first time we execute an AppleScript.
+    -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>MacIsland needs permission to control system volume and brightness.</string>
+</dict>
+</plist>
