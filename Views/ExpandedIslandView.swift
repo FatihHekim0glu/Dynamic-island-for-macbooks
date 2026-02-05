@@ -133,6 +133,8 @@ struct ExpandedIslandView: View {
                 Image(systemName: viewModel.nowPlaying.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 22))
                     .foregroundColor(.white)
+                    .contentTransition(.symbolEffect(.replace.offUp))
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.nowPlaying.isPlaying)
             }
             .buttonStyle(.plain)
 

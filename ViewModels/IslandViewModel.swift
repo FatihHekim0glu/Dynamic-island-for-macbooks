@@ -31,7 +31,7 @@ struct IslandDimensions {
     let cornerRadius: CGFloat
 
     static let idle     = IslandDimensions(width: 200, height: 32, cornerRadius: 16)
-    static let compact  = IslandDimensions(width: 280, height: 38, cornerRadius: 19)
+    static let compact  = IslandDimensions(width: 380, height: 38, cornerRadius: 19)
     // Height increased from 180 → 220 to accommodate the media controls row.
     static let expanded = IslandDimensions(width: 360, height: 220, cornerRadius: 24)
 }

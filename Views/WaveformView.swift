@@ -42,14 +42,14 @@ struct WaveformView: View {
             ForEach(0..<barCount, id: \.self) { index in
                 let height = barHeight(for: index, at: currentTime)
                 RoundedRectangle(cornerRadius: 1.5)
-                    .fill(color.opacity(0.9))
+                    .fill(color.opacity(isPlaying ? 0.9 : 0.3))
                     .frame(width: 3, height: height * 16)
-                    .animation(.linear(duration: 0.05), value: currentTime)
+                    .animation(isPlaying ? .linear(duration: 0.05) : .easeOut(duration: 0.4), value: currentTime)
             }
         }
         .frame(height: 16)
         .onAppear {
-            startTimer()
+            if isPlaying { startTimer() }
         }
         .onDisappear {
             stopTimer()
@@ -57,8 +57,13 @@ struct WaveformView: View {
         .onChange(of: isPlaying) { _, newValue in
             if newValue {
                 startTimer()
+            } else {
+                // Update one last time so bars animate to rest, then stop
+                currentTime = Date.timeIntervalSinceReferenceDate
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+                    if !isPlaying { stopTimer() }
+                }
             }
-            // Keep timer running even when paused so bars settle to rest position
         }
     }
 
@@ -81,7 +86,7 @@ struct WaveformView: View {
 
     /// Compute bar height using overlapping sine waves.
     private func barHeight(for index: Int, at time: Double) -> CGFloat {
-        guard isPlaying else { return 0.2 }
+        guard isPlaying else { return 0.08 }
 
         let freq = baseFrequencies[index]
         let phase = phaseOffsets[index]

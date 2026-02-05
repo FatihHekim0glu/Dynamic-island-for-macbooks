@@ -66,47 +66,64 @@ struct IslandView: View {
         }
     }
 
-    // MARK: - Compact View (inline music pill)
+    // MARK: - Compact View (split around notch — iPhone Dynamic Island style)
+    //
+    // The compact pill is wider than the notch (~380pt vs ~180pt notch).
+    // Content is split into two "ears" flanking the camera cutout:
+    //   Left ear:  album art + song title
+    //   Right ear: play/pause indicator + waveform
+    // The middle is a solid black bridge that blends with the notch.
 
     @ViewBuilder
     private var compactView: some View {
         let info = viewModel.nowPlaying
+        let notchGap: CGFloat = 140 // approximate camera region to keep clear
 
-        HStack(spacing: 10) {
-            // Mini album art — tap to open source app
-            if let artwork = info.artwork {
-                Image(nsImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 24, height: 24)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                    .padding(.leading, 6)
-                    .onTapGesture {
-                        viewModel.openNowPlayingApp()
-                    }
-            } else {
-                Image(systemName: "music.note")
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.6))
-                    .frame(width: 24, height: 24)
-                    .padding(.leading, 6)
+        HStack(spacing: 0) {
+            // ── Left Ear ──
+            HStack(spacing: 6) {
+                if let artwork = info.artwork {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 22, height: 22)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .onTapGesture { viewModel.openNowPlayingApp() }
+                } else {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.6))
+                        .frame(width: 22, height: 22)
+                }
+
+                MarqueeText(
+                    info.title.isEmpty ? "Not Playing" : info.title,
+                    font: .system(size: 11, weight: .medium),
+                    color: .white.opacity(0.9),
+                    speed: 25,
+                    delayBeforeScroll: 2.0
+                )
+                .frame(height: 14)
             }
+            .padding(.leading, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Song title — auto-scrolls when text is too long for the pill
-            MarqueeText(
-                info.title,
-                font: .system(size: 12, weight: .medium),
-                color: .white,
-                speed: 30,
-                delayBeforeScroll: 2.0
-            )
-            .frame(height: 16)
+            // ── Notch Gap (invisible bridge) ──
+            Color.clear
+                .frame(width: notchGap)
 
-            Spacer()
+            // ── Right Ear ──
+            HStack(spacing: 6) {
+                Image(systemName: info.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.7))
+                    .contentTransition(.symbolEffect(.replace.offUp))
+                    .animation(.easeInOut(duration: 0.2), value: info.isPlaying)
 
-            // Waveform indicator
-            WaveformView(isPlaying: info.isPlaying, barCount: 3, color: .green)
-                .padding(.trailing, 8)
+                WaveformView(isPlaying: info.isPlaying, barCount: 3, color: .green)
+            }
+            .padding(.trailing, 10)
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(
             width: IslandDimensions.compact.width,
