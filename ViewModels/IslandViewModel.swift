@@ -31,7 +31,9 @@ struct IslandDimensions {
     let cornerRadius: CGFloat
 
     static let idle     = IslandDimensions(width: 200, height: 32, cornerRadius: 16)
-    static let compact  = IslandDimensions(width: 380, height: 38, cornerRadius: 19)
+    // Compact drops below the notch: 33pt notch + 35pt visible content = 68pt total.
+    // Width matches notch blend zone with slight overshoot for visual continuity.
+    static let compact  = IslandDimensions(width: 300, height: 68, cornerRadius: 22)
     // Height increased from 180 → 220 to accommodate the media controls row.
     static let expanded = IslandDimensions(width: 360, height: 220, cornerRadius: 24)
 }
@@ -52,6 +54,10 @@ final class IslandViewModel: ObservableObject {
     let volumeService: VolumeService
     let brightnessService: BrightnessService
 
+    /// Now-playing info forwarded from the service as @Published
+    /// so SwiftUI re-renders when track info changes (not just state).
+    @Published var nowPlaying: NowPlayingInfo = .empty
+
     // MARK: Computed
 
     var dimensions: IslandDimensions {
@@ -60,10 +66,6 @@ final class IslandViewModel: ObservableObject {
         case .compact:  return .compact
         case .expanded: return .expanded
         }
-    }
-
-    var nowPlaying: NowPlayingInfo {
-        nowPlayingService.nowPlaying
     }
 
     // MARK: Private
@@ -89,6 +91,8 @@ final class IslandViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] info in
                 guard let self else { return }
+                // Forward track info so SwiftUI re-renders on song changes
+                self.nowPlaying = info
                 self.updateStateForPlayback(info)
             }
             .store(in: &cancellables)
@@ -137,7 +141,7 @@ final class IslandViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
 
             isHovering = false
-            let info = nowPlayingService.nowPlaying
+            let info = self.nowPlaying
 
             withAnimation(.interpolatingSpring(stiffness: 200, damping: 18)) {
                 if info.isPlaying && !info.title.isEmpty {

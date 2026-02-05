@@ -1,13 +1,11 @@
 // NowPlayingService.swift
 // MacIsland
 //
-// Reads now-playing state and sends playback commands to the active media app.
-//
-// On modern macOS (Sequoia+), MRMediaRemote read APIs are broken:
-//   - GetNowPlayingInfo returns empty ("Operation not permitted")
-//   - GetNowPlayingApplicationIsPlaying returns incorrect values
-// So we use AppleScript for ALL reads (track info + playback state)
-// and MRMediaRemoteSendCommand for writes (play/pause/next/prev).
+// Maximum-speed now-playing service.
+// - Pre-compiled NSAppleScript runs on main thread (~5ms, no async overhead)
+// - Optimistic UI: play/pause flips instantly
+// - Track info and artwork decoupled (info appears first, art loads async)
+// - 0.5s polling, 100ms post-command refresh
 
 import AppKit
 import Combine
@@ -52,7 +50,7 @@ private enum MediaApp: String, CaseIterable {
         }
     }
 
-    var trackInfoScript: String {
+    var trackInfoSource: String {
         """
         tell application "\(appName)"
             if player state is playing or player state is paused then
@@ -60,13 +58,13 @@ private enum MediaApp: String, CaseIterable {
                 set a to artist of current track
                 set al to album of current track
                 set s to player state is playing
-                return t & "\\n" & a & "\\n" & al & "\\n" & s
+                return t & "\n" & a & "\n" & al & "\n" & s
             end if
         end tell
         """
     }
 
-    var artworkScript: String {
+    var artworkSource: String {
         switch self {
         case .spotify:
             return """
@@ -94,25 +92,24 @@ final class NowPlayingService: ObservableObject {
 
     @Published private(set) var nowPlaying: NowPlayingInfo = .empty
 
-    // MRMediaRemote — only used for sending commands
     private var mrSendCommand: MRMediaRemoteSendCommandFunction?
     private var mrGetNowPlayingPID: MRMediaRemoteGetNowPlayingApplicationPIDFunction?
 
     private nonisolated(unsafe) var pollTimer: Timer?
 
-    /// The detected running media app.
     private var activeMediaApp: MediaApp?
+    private var compiledTrackScript: NSAppleScript?
+    private var compiledArtworkScript: NSAppleScript?
 
-    /// Cached Spotify artwork URL to avoid re-downloading.
     private var cachedArtworkURL: String = ""
     private var cachedArtworkImage: NSImage?
 
-    /// Flag to avoid overlapping AppleScript queries.
-    private var isFetching: Bool = false
+    /// Tracks the last title we fetched artwork for to avoid redundant fetches.
+    private var lastArtworkTitle: String = ""
 
     init() {
         loadMRMediaRemote()
-        detectActiveMediaApp()
+        detectAndCompileScripts()
         startPolling()
         fetchNowPlaying()
     }
@@ -121,7 +118,7 @@ final class NowPlayingService: ObservableObject {
         pollTimer?.invalidate()
     }
 
-    // MARK: - MRMediaRemote (Commands Only)
+    // MARK: - MRMediaRemote
 
     private func loadMRMediaRemote() {
         let path = "/System/Library/PrivateFrameworks/MediaRemote.framework"
@@ -135,10 +132,29 @@ final class NowPlayingService: ObservableObject {
         }
     }
 
-    // MARK: - Polling
+    // MARK: - Script Compilation
+
+    private func detectAndCompileScripts() {
+        let workspace = NSWorkspace.shared
+        for app in MediaApp.allCases {
+            if workspace.runningApplications.contains(where: { $0.bundleIdentifier == app.rawValue }) {
+                activeMediaApp = app
+                compiledTrackScript = NSAppleScript(source: app.trackInfoSource)
+                compiledTrackScript?.compileAndReturnError(nil)
+                compiledArtworkScript = NSAppleScript(source: app.artworkSource)
+                compiledArtworkScript?.compileAndReturnError(nil)
+                return
+            }
+        }
+        activeMediaApp = nil
+        compiledTrackScript = nil
+        compiledArtworkScript = nil
+    }
+
+    // MARK: - Polling (0.5s)
 
     private func startPolling() {
-        let timer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.fetchNowPlaying()
             }
@@ -151,22 +167,26 @@ final class NowPlayingService: ObservableObject {
 
     func togglePlayPause() {
         _ = mrSendCommand?(2, nil)
-        scheduleRefresh(delay: 0.3)
+        // Optimistic: flip instantly
+        let c = nowPlaying
+        nowPlaying = NowPlayingInfo(title: c.title, artist: c.artist, album: c.album, artwork: c.artwork, isPlaying: !c.isPlaying)
+        scheduleRefresh()
     }
 
     func nextTrack() {
         _ = mrSendCommand?(4, nil)
-        scheduleRefresh(delay: 0.5)
+        scheduleRefresh()
     }
 
     func previousTrack() {
         _ = mrSendCommand?(5, nil)
-        scheduleRefresh(delay: 0.5)
+        scheduleRefresh()
     }
 
-    private func scheduleRefresh(delay: Double) {
+    private func scheduleRefresh() {
+        // 100ms is enough for Spotify/Music to register the command
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            try? await Task.sleep(nanoseconds: 100_000_000)
             self?.fetchNowPlaying()
         }
     }
@@ -175,114 +195,88 @@ final class NowPlayingService: ObservableObject {
         mrGetNowPlayingPID?(DispatchQueue.main, completion)
     }
 
-    // MARK: - Active Media App Detection
-
-    private func detectActiveMediaApp() {
-        let workspace = NSWorkspace.shared
-        for app in MediaApp.allCases {
-            if workspace.runningApplications.contains(where: { $0.bundleIdentifier == app.rawValue }) {
-                activeMediaApp = app
-                return
-            }
-        }
-        activeMediaApp = nil
-    }
-
-    // MARK: - Fetch Now Playing (AppleScript)
+    // MARK: - Fetch Now Playing (synchronous on main — ~5ms)
 
     func fetchNowPlaying() {
-        // Avoid overlapping fetches (AppleScript takes ~50ms)
-        guard !isFetching else { return }
-        isFetching = true
+        if activeMediaApp == nil || compiledTrackScript == nil {
+            detectAndCompileScripts()
+        }
 
-        // Re-detect media app periodically in case user launched/quit one
-        detectActiveMediaApp()
-
-        guard let app = activeMediaApp else {
-            isFetching = false
-            if nowPlaying != .empty {
-                nowPlaying = .empty
-            }
+        guard let _ = activeMediaApp, let trackScript = compiledTrackScript else {
+            if nowPlaying != .empty { nowPlaying = .empty }
             return
         }
 
-        // Run AppleScript off the main thread via Process/osascript
-        let script = app.trackInfoScript
-        let artScript = app == .spotify ? app.artworkScript : nil
+        // Execute compiled script directly on main thread (~5ms)
+        var error: NSDictionary?
+        let result: NSAppleEventDescriptor? = trackScript.executeAndReturnError(&error)
+        let raw = result?.stringValue ?? ""
+
+        if error != nil && raw.isEmpty {
+            // Media app may have quit — re-detect next cycle
+            detectAndCompileScripts()
+            return
+        }
+
+        let lines = raw.components(separatedBy: "\n")
+        let title = lines.count > 0 ? lines[0] : ""
+        let artist = lines.count > 1 ? lines[1] : ""
+        let album = lines.count > 2 ? lines[2] : ""
+        let isPlaying = lines.count > 3 && lines[3].contains("true")
+
+        let trackChanged = title != nowPlaying.title || artist != nowPlaying.artist
+        let stateChanged = isPlaying != nowPlaying.isPlaying || album != nowPlaying.album
+
+        if trackChanged || stateChanged {
+            // Update immediately with existing artwork (or nil if track changed)
+            nowPlaying = NowPlayingInfo(
+                title: title,
+                artist: artist,
+                album: album,
+                artwork: trackChanged ? nil : nowPlaying.artwork,
+                isPlaying: isPlaying
+            )
+        }
+
+        // Fetch artwork async if track changed (doesn't block UI)
+        if trackChanged && !title.isEmpty && activeMediaApp == .spotify {
+            fetchArtworkAsync(forTitle: title)
+        }
+    }
+
+    // MARK: - Artwork (async, decoupled from info)
+
+    private func fetchArtworkAsync(forTitle title: String) {
+        guard let artScript = compiledArtworkScript else { return }
+        lastArtworkTitle = title
 
         Task.detached { [weak self] in
-            // Get track info + playing state in one call
-            let trackResult = Self.runOsascript(script)
-            let lines = trackResult?.components(separatedBy: "\n") ?? []
+            var err: NSDictionary?
+            let result: NSAppleEventDescriptor? = artScript.executeAndReturnError(&err)
+            let url = result?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
-            let title = lines.count > 0 ? lines[0].trimmingCharacters(in: .whitespacesAndNewlines) : ""
-            let artist = lines.count > 1 ? lines[1].trimmingCharacters(in: .whitespacesAndNewlines) : ""
-            let album = lines.count > 2 ? lines[2].trimmingCharacters(in: .whitespacesAndNewlines) : ""
-            let playingStr = lines.count > 3 ? lines[3].trimmingCharacters(in: .whitespacesAndNewlines) : "false"
-            let isPlaying = playingStr == "true"
-
-            // Fetch artwork
-            var artwork: NSImage? = nil
-            if let artScript = artScript, !title.isEmpty {
-                let artResult = Self.runOsascript(artScript)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                if !artResult.isEmpty, app == .spotify {
-                    artwork = await self?.fetchSpotifyArtwork(url: artResult)
-                }
-            }
+            guard !url.isEmpty else { return }
+            let image = await self?.fetchSpotifyArtwork(url: url)
 
             await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.isFetching = false
-
-                let newInfo = NowPlayingInfo(
-                    title: title,
-                    artist: artist,
-                    album: album,
-                    artwork: artwork ?? self.nowPlaying.artwork,
-                    isPlaying: isPlaying
-                )
-
-                if self.nowPlaying != newInfo || (artwork != nil && artwork !== self.nowPlaying.artwork) {
-                    self.nowPlaying = newInfo
+                guard let self, self.lastArtworkTitle == title, let image else { return }
+                let c = self.nowPlaying
+                // Only update if we're still on the same track
+                if c.title == title {
+                    self.nowPlaying = NowPlayingInfo(
+                        title: c.title, artist: c.artist, album: c.album,
+                        artwork: image, isPlaying: c.isPlaying
+                    )
                 }
             }
         }
     }
-
-    // MARK: - osascript via Process
-
-    /// Runs an AppleScript string via /usr/bin/osascript. Thread-safe.
-    private nonisolated static func runOsascript(_ source: String) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", source]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe() // Suppress errors
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            return nil
-        }
-
-        guard process.terminationStatus == 0 else { return nil }
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(data: data, encoding: .utf8)
-    }
-
-    // MARK: - Spotify Artwork
 
     private func fetchSpotifyArtwork(url: String) async -> NSImage? {
         if url == cachedArtworkURL, let cached = cachedArtworkImage {
             return cached
         }
-
         guard let artURL = URL(string: url) else { return nil }
-
         do {
             let (data, _) = try await URLSession.shared.data(from: artURL)
             let image = NSImage(data: data)

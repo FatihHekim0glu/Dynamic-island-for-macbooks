@@ -66,79 +66,77 @@ struct IslandView: View {
         }
     }
 
-    // MARK: - Compact View (split around notch — iPhone Dynamic Island style)
+    // MARK: - Compact View (drops below notch)
     //
-    // The compact pill is wider than the notch (~380pt vs ~180pt notch).
-    // Content is split into two "ears" flanking the camera cutout:
-    //   Left ear:  album art + song title
-    //   Right ear: play/pause indicator + waveform
-    // The middle is a solid black bridge that blends with the notch.
+    // The compact pill is 300×68pt. The top ~33pt blends with the notch (black),
+    // and the content row sits in the visible bottom ~35pt below the notch.
+    // This avoids fighting the hardware camera cutout entirely.
 
     @ViewBuilder
     private var compactView: some View {
         let info = viewModel.nowPlaying
-        let notchGap: CGFloat = 140 // approximate camera region to keep clear
 
-        HStack(spacing: 0) {
-            // ── Left Ear ──
-            HStack(spacing: 6) {
+        VStack(spacing: 0) {
+            // Top zone — blends with the notch (invisible black)
+            Color.clear
+                .frame(height: 33)
+
+            // Content zone — visible below the notch
+            HStack(spacing: 8) {
+                // Album art
                 if let artwork = info.artwork {
                     Image(nsImage: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 22, height: 22)
-                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .frame(width: 24, height: 24)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                         .onTapGesture { viewModel.openNowPlayingApp() }
                 } else {
                     Image(systemName: "music.note")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.6))
-                        .frame(width: 22, height: 22)
+                        .frame(width: 24, height: 24)
                 }
 
+                // Song title — scrolls when too long
                 MarqueeText(
                     info.title.isEmpty ? "Not Playing" : info.title,
-                    font: .system(size: 11, weight: .medium),
-                    color: .white.opacity(0.9),
-                    speed: 25,
+                    font: .system(size: 12, weight: .medium),
+                    color: .white,
+                    speed: 30,
                     delayBeforeScroll: 2.0
                 )
-                .frame(height: 14)
-            }
-            .padding(.leading, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: 16)
 
-            // ── Notch Gap (invisible bridge) ──
-            Color.clear
-                .frame(width: notchGap)
+                Spacer(minLength: 4)
 
-            // ── Right Ear ──
-            HStack(spacing: 6) {
+                // Play/pause indicator
                 Image(systemName: info.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.7))
                     .contentTransition(.symbolEffect(.replace.offUp))
                     .animation(.easeInOut(duration: 0.2), value: info.isPlaying)
 
+                // Waveform bars
                 WaveformView(isPlaying: info.isPlaying, barCount: 3, color: .green)
             }
-            .padding(.trailing, 10)
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.horizontal, 14)
+            .frame(height: 35)
         }
         .frame(
             width: IslandDimensions.compact.width,
             height: IslandDimensions.compact.height
         )
         .background(
-            Capsule()
+            RoundedRectangle(cornerRadius: IslandDimensions.compact.cornerRadius)
                 .fill(.black)
                 .overlay(
-                    Capsule()
+                    RoundedRectangle(cornerRadius: IslandDimensions.compact.cornerRadius)
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
-                                    .white.opacity(0.08),
-                                    .clear
+                                    .white.opacity(0.06),
+                                    .white.opacity(0.03)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
