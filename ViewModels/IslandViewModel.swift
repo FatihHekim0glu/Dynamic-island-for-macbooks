@@ -3,7 +3,7 @@
 //
 // Central state machine for the Dynamic Island.
 // Drives the SwiftUI view transitions between Idle / Compact / Expanded states.
-// Owns the NowPlayingService and reacts to playback changes.
+// Owns the NowPlayingService, VolumeService, and BrightnessService.
 
 import SwiftUI
 import Combine
@@ -32,7 +32,8 @@ struct IslandDimensions {
 
     static let idle     = IslandDimensions(width: 200, height: 32, cornerRadius: 16)
     static let compact  = IslandDimensions(width: 280, height: 38, cornerRadius: 19)
-    static let expanded = IslandDimensions(width: 360, height: 180, cornerRadius: 24)
+    // Height increased from 180 → 220 to accommodate the media controls row.
+    static let expanded = IslandDimensions(width: 360, height: 220, cornerRadius: 24)
 }
 
 // MARK: - ViewModel
@@ -48,6 +49,8 @@ final class IslandViewModel: ObservableObject {
     // MARK: Dependencies
 
     let nowPlayingService: NowPlayingService
+    let volumeService: VolumeService
+    let brightnessService: BrightnessService
 
     // MARK: Computed
 
@@ -74,6 +77,8 @@ final class IslandViewModel: ObservableObject {
 
     init(nowPlayingService: NowPlayingService? = nil) {
         self.nowPlayingService = nowPlayingService ?? NowPlayingService()
+        self.volumeService = VolumeService()
+        self.brightnessService = BrightnessService()
         bindNowPlaying()
     }
 
@@ -144,27 +149,37 @@ final class IslandViewModel: ObservableObject {
         }
     }
 
-    // MARK: - System Controls (stubs for Phase 1)
+    // MARK: - Playback Controls
 
-    func setVolume(_ value: Float) {
-        // Use CoreAudio or NSSound to set system volume.
-        // Phase 1: execute AppleScript as a quick bridge.
-        let script = "set volume output volume \(Int(value * 100))"
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
+    func togglePlayPause() {
+        nowPlayingService.togglePlayPause()
+    }
+
+    func nextTrack() {
+        nowPlayingService.nextTrack()
+    }
+
+    func previousTrack() {
+        nowPlayingService.previousTrack()
+    }
+
+    /// Activate the app that is currently providing now-playing info (e.g., Spotify, Apple Music).
+    func openNowPlayingApp() {
+        nowPlayingService.getNowPlayingAppPID { pid in
+            if pid > 0,
+               let app = NSRunningApplication(processIdentifier: pid) {
+                app.activate()
+            }
         }
     }
 
+    // MARK: - System Controls
+
+    func setVolume(_ value: Float) {
+        volumeService.setVolume(value)
+    }
+
     func setBrightness(_ value: Float) {
-        // CoreDisplay / IOKit brightness setting.
-        // Phase 1: execute via external `brightness` CLI or skip gracefully.
-        let script = """
-        do shell script "brightness \(String(format: "%.2f", value))"
-        """
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
-        }
+        brightnessService.setBrightness(value)
     }
 }

@@ -4,7 +4,8 @@
 // Application lifecycle manager. Responsible for:
 // 1. Hiding the Dock icon (LSUIElement behavior via code, backed by Info.plist).
 // 2. Creating and showing the island window on launch.
-// 3. Setting up a status bar item (menu bar icon) for quit/preferences.
+// 3. Setting up global keyboard shortcuts via HotkeyService.
+// 4. Setting up a status bar item (menu bar icon) for quit/preferences.
 //
 // WHY AppDelegate instead of pure SwiftUI @main App?
 // Because we need fine-grained control over NSWindow/NSPanel creation that
@@ -14,11 +15,13 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var windowController: IslandWindowController?
     private var statusItem: NSStatusItem?
     private var viewModel: IslandViewModel?
+    private var hotkeyService: HotkeyService?
 
     // MARK: - App Lifecycle
 
@@ -36,7 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.showIsland()
         self.windowController = controller
 
-        // ── 3. Status Bar Item (menu bar icon) ──
+        // ── 3. Global Keyboard Shortcuts ──
+        setupHotkeys(viewModel: vm)
+
+        // ── 4. Status Bar Item (menu bar icon) ──
         setupStatusItem()
 
         print("[MacIsland] Launched. Notch detected: \(ScreenUtility.detectNotch().hasNotch)")
@@ -45,6 +51,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         // Don't quit when the panel is "closed" — we're a background utility.
         return false
+    }
+
+    // MARK: - Hotkeys
+
+    private func setupHotkeys(viewModel vm: IslandViewModel) {
+        // Request Accessibility permission if not already granted.
+        // Without it, global hotkeys silently fail.
+        HotkeyService.checkAndRequestAccessibility()
+
+        let hotkeys = HotkeyService()
+        hotkeys.onAction = { [weak vm] action in
+            guard let vm else { return }
+            switch action {
+            case .togglePlayPause:
+                vm.togglePlayPause()
+            case .nextTrack:
+                vm.nextTrack()
+            case .previousTrack:
+                vm.previousTrack()
+            case .volumeUp:
+                let current = vm.volumeService.volume
+                vm.setVolume(min(current + 0.05, 1.0))
+            case .volumeDown:
+                let current = vm.volumeService.volume
+                vm.setVolume(max(current - 0.05, 0.0))
+            }
+        }
+        self.hotkeyService = hotkeys
     }
 
     // MARK: - Status Bar
@@ -73,7 +107,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showAbout() {
         let alert = NSAlert()
         alert.messageText = "MacIsland"
-        alert.informativeText = "Dynamic Island for macOS.\nPhase 1 — Music + Controls\n\nmacOS Sonoma 14.0+"
+        alert.informativeText = "Dynamic Island for macOS.\nPhase 2 — Full Controls\n\nOption+Space: Play/Pause\nOption+Arrows: Skip/Volume\n\nmacOS Sonoma 14.0+"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()

@@ -17,6 +17,10 @@
 		A10000010000000000000008 /* IslandViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000008; };
 		A10000010000000000000009 /* NowPlayingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000009; };
 		A10000010000000000000010 /* ScreenUtility.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000010; };
+		A10000010000000000000011 /* VolumeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000012; };
+		A10000010000000000000012 /* BrightnessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000013; };
+		A10000010000000000000013 /* HotkeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000014; };
+		A10000010000000000000014 /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000015; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +35,10 @@
 		A20000010000000000000009 /* NowPlayingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingService.swift; sourceTree = "<group>"; };
 		A20000010000000000000010 /* ScreenUtility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenUtility.swift; sourceTree = "<group>"; };
 		A20000010000000000000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A20000010000000000000012 /* VolumeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeService.swift; sourceTree = "<group>"; };
+		A20000010000000000000013 /* BrightnessService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessService.swift; sourceTree = "<group>"; };
+		A20000010000000000000014 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
+		A20000010000000000000015 /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		A30000010000000000000001 /* MacIsland.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacIsland.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -82,6 +90,7 @@
 				A20000010000000000000005 /* IdleIslandView.swift */,
 				A20000010000000000000006 /* ExpandedIslandView.swift */,
 				A20000010000000000000007 /* WaveformView.swift */,
+				A20000010000000000000015 /* MarqueeText.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -99,6 +108,9 @@
 			children = (
 				A20000010000000000000009 /* NowPlayingService.swift */,
 				A20000010000000000000010 /* ScreenUtility.swift */,
+				A20000010000000000000012 /* VolumeService.swift */,
+				A20000010000000000000013 /* BrightnessService.swift */,
+				A20000010000000000000014 /* HotkeyService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -173,6 +185,10 @@
 				A10000010000000000000008 /* IslandViewModel.swift in Sources */,
 				A10000010000000000000009 /* NowPlayingService.swift in Sources */,
 				A10000010000000000000010 /* ScreenUtility.swift in Sources */,
+				A10000010000000000000011 /* VolumeService.swift in Sources */,
+				A10000010000000000000012 /* BrightnessService.swift in Sources */,
+				A10000010000000000000013 /* HotkeyService.swift in Sources */,
+				A10000010000000000000014 /* MarqueeText.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

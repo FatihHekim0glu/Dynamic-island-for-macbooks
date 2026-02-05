@@ -2,9 +2,9 @@
 // MacIsland
 //
 // The fully expanded island state. Shows:
-// - Now-playing info (album art, title, artist) at the top.
-// - System controls (volume, brightness sliders) below.
-// Revealed on hover, dismissed on hover-out.
+// - Now-playing info (album art, title, artist) — tap art to open source app.
+// - Media controls (previous, play/pause, next).
+// - System controls (volume, brightness sliders) bound to live system state.
 
 import SwiftUI
 
@@ -12,18 +12,18 @@ struct ExpandedIslandView: View {
 
     @ObservedObject var viewModel: IslandViewModel
 
-    @State private var volume: Float = 0.5
-    @State private var brightness: Float = 0.5
-
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             // MARK: - Now Playing Section
             nowPlayingSection
+
+            // MARK: - Media Controls
+            mediaControlsRow
 
             Divider()
                 .background(Color.white.opacity(0.15))
 
-            // MARK: - Controls Section
+            // MARK: - System Controls
             controlsSection
         }
         .padding(.horizontal, 16)
@@ -59,13 +59,17 @@ struct ExpandedIslandView: View {
         let info = viewModel.nowPlaying
 
         HStack(spacing: 12) {
-            // Album Art
+            // Album Art — tap to open source app (Spotify, Apple Music, etc.)
             if let artwork = info.artwork {
                 Image(nsImage: artwork)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 44, height: 44)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .onTapGesture {
+                        viewModel.openNowPlayingApp()
+                    }
+                    .help("Open in source app")
             } else {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.white.opacity(0.1))
@@ -79,10 +83,14 @@ struct ExpandedIslandView: View {
 
             // Track Info
             VStack(alignment: .leading, spacing: 2) {
-                Text(info.title.isEmpty ? "Not Playing" : info.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
+                MarqueeText(
+                    info.title.isEmpty ? "Not Playing" : info.title,
+                    font: .system(size: 13, weight: .semibold),
+                    color: .white,
+                    speed: 25,
+                    delayBeforeScroll: 3.0
+                )
+                .frame(height: 18)
 
                 Text(info.artist.isEmpty ? "—" : info.artist)
                     .font(.system(size: 11))
@@ -98,33 +106,88 @@ struct ExpandedIslandView: View {
         }
     }
 
-    // MARK: - Controls
+    // MARK: - Media Controls
+
+    @ViewBuilder
+    private var mediaControlsRow: some View {
+        HStack(spacing: 24) {
+            // Previous Track
+            Button(action: { viewModel.previousTrack() }) {
+                Image(systemName: "backward.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .buttonStyle(.plain)
+
+            // Play / Pause
+            Button(action: { viewModel.togglePlayPause() }) {
+                Image(systemName: viewModel.nowPlaying.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.white)
+            }
+            .buttonStyle(.plain)
+
+            // Next Track
+            Button(action: { viewModel.nextTrack() }) {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - System Controls
+
+    /// Dynamic volume icon based on current level.
+    private var volumeIcon: String {
+        let vol = viewModel.volumeService.volume
+        if vol <= 0 { return "speaker.slash.fill" }
+        if vol < 0.33 { return "speaker.wave.1.fill" }
+        if vol < 0.66 { return "speaker.wave.2.fill" }
+        return "speaker.wave.3.fill"
+    }
+
+    /// Dynamic brightness icon based on current level.
+    private var brightnessIcon: String {
+        viewModel.brightnessService.brightness < 0.3
+            ? "sun.min.fill"
+            : "sun.max.fill"
+    }
 
     @ViewBuilder
     private var controlsSection: some View {
         VStack(spacing: 10) {
-            // Volume
+            // Volume — bound to live CoreAudio state
             HStack(spacing: 8) {
-                Image(systemName: "speaker.fill")
+                Image(systemName: volumeIcon)
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.6))
                     .frame(width: 14)
 
-                SliderView(value: $volume, tintColor: .white) { newValue in
-                    viewModel.setVolume(newValue)
-                }
+                SliderView(
+                    value: Binding(
+                        get: { viewModel.volumeService.volume },
+                        set: { viewModel.setVolume($0) }
+                    ),
+                    tintColor: .white
+                )
             }
 
-            // Brightness
+            // Brightness — bound to live CoreDisplay state
             HStack(spacing: 8) {
-                Image(systemName: "sun.max.fill")
+                Image(systemName: brightnessIcon)
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.6))
                     .frame(width: 14)
 
-                SliderView(value: $brightness, tintColor: .yellow) { newValue in
-                    viewModel.setBrightness(newValue)
-                }
+                SliderView(
+                    value: Binding(
+                        get: { viewModel.brightnessService.brightness },
+                        set: { viewModel.setBrightness($0) }
+                    ),
+                    tintColor: .yellow
+                )
             }
         }
     }
@@ -134,11 +197,10 @@ struct ExpandedIslandView: View {
 
 /// A custom slider that matches the compact iOS Control Center aesthetic.
 /// The standard SwiftUI Slider is too tall and styled for macOS forms.
-private struct SliderView: View {
+struct SliderView: View {
 
     @Binding var value: Float
     let tintColor: Color
-    var onChanged: ((Float) -> Void)?
 
     var body: some View {
         GeometryReader { geo in
@@ -159,7 +221,6 @@ private struct SliderView: View {
                     .onChanged { gesture in
                         let newValue = Float(gesture.location.x / geo.size.width)
                         value = min(max(newValue, 0), 1)
-                        onChanged?(value)
                     }
             )
         }

@@ -31,11 +31,11 @@
     <string>14.0</string>
 
     <!--
-        NSAppleEventsUsageDescription
-        Required for the AppleScript-based volume/brightness control in Phase 1.
-        The user will see this prompt the first time we execute an AppleScript.
+        NSAccessibilityUsageDescription
+        Required for global keyboard shortcuts (Option+Space for play/pause, etc.).
+        The user will see this prompt the first time the app requests Accessibility access.
     -->
-    <key>NSAppleEventsUsageDescription</key>
-    <string>MacIsland needs permission to control system volume and brightness.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>MacIsland uses keyboard shortcuts to control media playback and volume.</string>
 </dict>
 </plist>

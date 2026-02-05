@@ -73,7 +73,7 @@ struct IslandView: View {
         let info = viewModel.nowPlaying
 
         HStack(spacing: 10) {
-            // Mini album art
+            // Mini album art — tap to open source app
             if let artwork = info.artwork {
                 Image(nsImage: artwork)
                     .resizable()
@@ -81,6 +81,9 @@ struct IslandView: View {
                     .frame(width: 24, height: 24)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     .padding(.leading, 6)
+                    .onTapGesture {
+                        viewModel.openNowPlayingApp()
+                    }
             } else {
                 Image(systemName: "music.note")
                     .font(.system(size: 12))
@@ -89,11 +92,15 @@ struct IslandView: View {
                     .padding(.leading, 6)
             }
 
-            // Song title — scrolling text would be nice in Phase 2
-            Text(info.title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white)
-                .lineLimit(1)
+            // Song title — auto-scrolls when text is too long for the pill
+            MarqueeText(
+                info.title,
+                font: .system(size: 12, weight: .medium),
+                color: .white,
+                speed: 30,
+                delayBeforeScroll: 2.0
+            )
+            .frame(height: 16)
 
             Spacer()
 

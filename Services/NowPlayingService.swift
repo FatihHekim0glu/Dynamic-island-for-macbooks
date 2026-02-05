@@ -26,6 +26,15 @@ private typealias MRMediaRemoteGetNowPlayingApplicationIsPlayingFunction =
 private typealias MRMediaRemoteRegisterForNowPlayingNotificationsFunction =
     @convention(c) (DispatchQueue) -> Void
 
+/// MRMediaRemoteSendCommand: sends playback commands to the active media app.
+/// Command values: 0=play, 1=pause, 2=togglePlayPause, 3=stop, 4=nextTrack, 5=previousTrack
+private typealias MRMediaRemoteSendCommandFunction =
+    @convention(c) (UInt32, AnyObject?) -> Bool
+
+/// MRMediaRemoteGetNowPlayingApplicationPID: resolves the PID of the app providing now-playing info.
+private typealias MRMediaRemoteGetNowPlayingApplicationPIDFunction =
+    @convention(c) (DispatchQueue, @escaping (Int32) -> Void) -> Void
+
 /// Known notification name strings from MRMediaRemote.
 private let kMRMediaRemoteNowPlayingInfoDidChangeNotification =
     NSNotification.Name("kMRMediaRemoteNowPlayingInfoDidChangeNotification")
@@ -68,6 +77,8 @@ final class NowPlayingService: ObservableObject {
     private var getNowPlayingInfo: MRMediaRemoteGetNowPlayingInfoFunction?
     private var getIsPlaying: MRMediaRemoteGetNowPlayingApplicationIsPlayingFunction?
     private var registerForNotifications: MRMediaRemoteRegisterForNowPlayingNotificationsFunction?
+    private var sendCommand: MRMediaRemoteSendCommandFunction?
+    private var getNowPlayingPID: MRMediaRemoteGetNowPlayingApplicationPIDFunction?
 
     private var observers: [NSObjectProtocol] = []
 
@@ -110,6 +121,18 @@ final class NowPlayingService: ObservableObject {
         if let ptr = CFBundleGetFunctionPointerForName(bundle, "MRMediaRemoteRegisterForNowPlayingNotifications" as CFString) {
             registerForNotifications = unsafeBitCast(ptr, to: MRMediaRemoteRegisterForNowPlayingNotificationsFunction.self)
         }
+
+        // Resolve: MRMediaRemoteSendCommand(command, options) -> Bool
+        // Used to send play/pause/next/previous commands to the active media app.
+        if let ptr = CFBundleGetFunctionPointerForName(bundle, "MRMediaRemoteSendCommand" as CFString) {
+            sendCommand = unsafeBitCast(ptr, to: MRMediaRemoteSendCommandFunction.self)
+        }
+
+        // Resolve: MRMediaRemoteGetNowPlayingApplicationPID(dispatch_queue_t, callback)
+        // Used to find which app is playing so we can activate it on album art tap.
+        if let ptr = CFBundleGetFunctionPointerForName(bundle, "MRMediaRemoteGetNowPlayingApplicationPID" as CFString) {
+            getNowPlayingPID = unsafeBitCast(ptr, to: MRMediaRemoteGetNowPlayingApplicationPIDFunction.self)
+        }
     }
 
     // MARK: - Observation
@@ -146,6 +169,39 @@ final class NowPlayingService: ObservableObject {
                 self?.fetchNowPlaying()
             }
         }
+    }
+
+    // MARK: - Fetch
+
+    // MARK: - Playback Commands
+
+    /// Toggle play/pause on the active media app.
+    func togglePlayPause() {
+        _ = sendCommand?(2, nil)  // 2 = togglePlayPause
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.fetchNowPlaying()
+        }
+    }
+
+    /// Skip to the next track.
+    func nextTrack() {
+        _ = sendCommand?(4, nil)  // 4 = nextTrack
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.fetchNowPlaying()
+        }
+    }
+
+    /// Skip to the previous track.
+    func previousTrack() {
+        _ = sendCommand?(5, nil)  // 5 = previousTrack
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.fetchNowPlaying()
+        }
+    }
+
+    /// Resolve the PID of the app currently providing now-playing info.
+    func getNowPlayingAppPID(completion: @escaping (Int32) -> Void) {
+        getNowPlayingPID?(DispatchQueue.main, completion)
     }
 
     // MARK: - Fetch
