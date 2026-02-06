@@ -22,23 +22,26 @@ enum IslandState: Equatable {
 enum ExpandedTab: String, CaseIterable, Identifiable {
     case media
     case timer
+    case pomodoro
     case system
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .media:  return "music.note"
-        case .timer:  return "timer"
-        case .system: return "cpu"
+        case .media:    return "music.note"
+        case .timer:    return "timer"
+        case .pomodoro: return "leaf.fill"
+        case .system:   return "cpu"
         }
     }
 
     var label: String {
         switch self {
-        case .media:  return "Media"
-        case .timer:  return "Timer"
-        case .system: return "System"
+        case .media:    return "Media"
+        case .timer:    return "Timer"
+        case .pomodoro: return "Focus"
+        case .system:   return "System"
         }
     }
 }

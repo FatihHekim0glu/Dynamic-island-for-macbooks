@@ -36,26 +36,31 @@ struct IdleIslandView: View {
             // Status indicators in the wings (outside the notch)
             HStack(spacing: 0) {
                 // ── LEFT WING ── (push content to the LEFT edge, away from notch)
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     if viewModel.focusService.isDNDActive {
                         Image(systemName: "moon.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundColor(.purple)
                     }
 
                     if viewModel.privacyService.isCameraActive {
                         Circle()
                             .fill(.green)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 8, height: 8)
                             .modifier(PulseModifier())
                     }
 
                     if viewModel.privacyService.isMicActive {
                         Circle()
                             .fill(.orange)
-                            .frame(width: 6, height: 6)
+                            .frame(width: 8, height: 8)
                             .modifier(PulseModifier())
                     }
+
+                    // Wi-Fi signal quality
+                    Image(systemName: viewModel.networkService.signalQuality.icon)
+                        .font(.system(size: 10))
+                        .foregroundColor(wifiColor)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 12)
@@ -65,10 +70,10 @@ struct IdleIslandView: View {
                     .frame(width: 180)
 
                 // ── RIGHT WING ── (push content to the RIGHT edge, away from notch)
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     if viewModel.systemStatsService.isHighCPU {
                         Image(systemName: "thermometer.medium")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundColor(.red)
                     }
 
@@ -81,6 +86,15 @@ struct IdleIslandView: View {
                 width: IslandDimensions.idle.width,
                 height: IslandDimensions.idle.height
             )
+        }
+    }
+    private var wifiColor: Color {
+        switch viewModel.networkService.signalQuality {
+        case .excellent: return .green
+        case .good:      return .white.opacity(0.7)
+        case .fair:      return .yellow
+        case .poor:      return .red
+        case .disconnected: return .gray.opacity(0.4)
         }
     }
 }

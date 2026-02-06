@@ -58,26 +58,15 @@ struct ExpandedIslandView: View {
     private var tabBar: some View {
         HStack(spacing: 0) {
             ForEach(ExpandedTab.allCases) { tab in
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.selectedTab = tab
+                TabBarButton(
+                    tab: tab,
+                    isSelected: viewModel.selectedTab == tab,
+                    action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            viewModel.selectedTab = tab
+                        }
                     }
-                }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 9))
-                        Text(tab.label)
-                            .font(.system(size: 9, weight: viewModel.selectedTab == tab ? .semibold : .regular))
-                    }
-                    .foregroundColor(viewModel.selectedTab == tab ? .white : .white.opacity(0.35))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule()
-                            .fill(viewModel.selectedTab == tab ? Color.white.opacity(0.1) : Color.clear)
-                    )
-                }
-                .buttonStyle(.plain)
+                )
             }
         }
     }
@@ -91,6 +80,8 @@ struct ExpandedIslandView: View {
             mediaTab
         case .timer:
             TimerExpandedView(timerService: viewModel.timerService)
+        case .pomodoro:
+            PomodoroExpandedView(pomodoroService: viewModel.pomodoroService)
         case .system:
             systemTab
         }
@@ -164,28 +155,35 @@ struct ExpandedIslandView: View {
     @ViewBuilder
     private var mediaControlsRow: some View {
         HStack(spacing: 24) {
-            Button(action: { viewModel.previousTrack() }) {
-                Image(systemName: "backward.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            .buttonStyle(.plain)
+            MediaControlButton(
+                systemName: "backward.fill",
+                fontSize: 14,
+                action: {
+                    HapticHelper.tap()
+                    viewModel.previousTrack()
+                }
+            )
 
-            Button(action: { viewModel.togglePlayPause() }) {
-                Image(systemName: viewModel.nowPlaying.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(.white)
-                    .contentTransition(.symbolEffect(.replace.offUp))
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.nowPlaying.isPlaying)
-            }
-            .buttonStyle(.plain)
+            MediaControlButton(
+                systemName: viewModel.nowPlaying.isPlaying ? "pause.fill" : "play.fill",
+                fontSize: 20,
+                isBright: true,
+                action: {
+                    HapticHelper.tap()
+                    viewModel.togglePlayPause()
+                }
+            )
+            .contentTransition(.symbolEffect(.replace.offUp))
+            .animation(.easeInOut(duration: 0.2), value: viewModel.nowPlaying.isPlaying)
 
-            Button(action: { viewModel.nextTrack() }) {
-                Image(systemName: "forward.fill")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            .buttonStyle(.plain)
+            MediaControlButton(
+                systemName: "forward.fill",
+                fontSize: 14,
+                action: {
+                    HapticHelper.tap()
+                    viewModel.nextTrack()
+                }
+            )
         }
     }
 
@@ -346,7 +344,10 @@ struct ExpandedIslandView: View {
 
     @ViewBuilder
     private var dndToggle: some View {
-        Button(action: { viewModel.focusService.toggleDND() }) {
+        Button(action: {
+            HapticHelper.tap()
+            viewModel.focusService.toggleDND()
+        }) {
             HStack(spacing: 4) {
                 Image(systemName: viewModel.focusService.isDNDActive ? "moon.fill" : "moon")
                     .font(.system(size: 10))
@@ -401,33 +402,173 @@ struct ExpandedIslandView: View {
     }
 }
 
-// MARK: - Custom Slider
+// MARK: - Tab Bar Button (with hover state)
+
+struct TabBarButton: View {
+
+    let tab: ExpandedTab
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 9))
+                Text(tab.label)
+                    .font(.system(size: 9, weight: isSelected ? .semibold : .regular))
+            }
+            .foregroundColor(
+                isSelected
+                    ? .white
+                    : (isHovering ? .white.opacity(0.55) : .white.opacity(0.35))
+            )
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.white.opacity(0.1) : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Media Control Button (with hover highlight)
+
+struct MediaControlButton: View {
+
+    let systemName: String
+    var fontSize: CGFloat = 14
+    var isBright: Bool = false
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: fontSize))
+                .foregroundColor(isBright ? .white : .white.opacity(0.8))
+                .frame(width: fontSize + 16, height: fontSize + 16)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(isHovering ? 0.1 : 0))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+    }
+}
+
+// MARK: - Enhanced Custom Slider
 
 struct SliderView: View {
 
     @Binding var value: Float
     let tintColor: Color
 
+    @State private var isHovering = false
+    @State private var isDragging = false
+
+    private var trackHeight: CGFloat {
+        isHovering || isDragging ? 8 : 6
+    }
+
+    private var percentageText: String {
+        "\(Int(value * 100))%"
+    }
+
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
+                // Background track
                 Capsule()
                     .fill(Color.white.opacity(0.1))
-                    .frame(height: 6)
+                    .frame(height: trackHeight)
 
+                // Filled track
                 Capsule()
                     .fill(tintColor.opacity(0.8))
-                    .frame(width: geo.size.width * CGFloat(value), height: 6)
+                    .frame(width: geo.size.width * CGFloat(value), height: trackHeight)
+
+                // Thumb (visible on hover or drag)
+                if isHovering || isDragging {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 10, height: 10)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                        .offset(x: thumbOffset(in: geo.size.width))
+                }
+
+                // Percentage tooltip while dragging
+                if isDragging {
+                    Text(percentageText)
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.7))
+                        )
+                        .offset(x: tooltipOffset(in: geo.size.width), y: -16)
+                }
             }
+            .frame(height: max(trackHeight, 10))
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { gesture in
+                        isDragging = true
                         let newValue = Float(gesture.location.x / geo.size.width)
                         value = min(max(newValue, 0), 1)
                     }
+                    .onEnded { _ in
+                        isDragging = false
+                    }
             )
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovering = hovering
+                }
+            }
         }
-        .frame(height: 6)
+        .frame(height: 10)
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .animation(.easeInOut(duration: 0.1), value: isDragging)
+    }
+
+    /// Offset for the thumb circle so it stays centered on the filled edge
+    private func thumbOffset(in totalWidth: CGFloat) -> CGFloat {
+        let thumbRadius: CGFloat = 5
+        let position = totalWidth * CGFloat(value)
+        return position - thumbRadius
+    }
+
+    /// Offset for the percentage tooltip, clamped so it doesn't overflow
+    private func tooltipOffset(in totalWidth: CGFloat) -> CGFloat {
+        let position = totalWidth * CGFloat(value)
+        let tooltipHalfWidth: CGFloat = 18
+        return min(max(position - tooltipHalfWidth, 0), totalWidth - tooltipHalfWidth * 2)
+    }
+}
+
+// MARK: - Haptic Feedback
+
+private enum HapticHelper {
+    static func tap() {
+        NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
     }
 }

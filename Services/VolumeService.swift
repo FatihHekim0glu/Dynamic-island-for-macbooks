@@ -154,14 +154,15 @@ final class VolumeService: ObservableObject {
             mElement: kAudioObjectPropertyElementMain
         )
 
-        volumeListenerBlock = { [weak self] _, _ in
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             DispatchQueue.main.async {
                 self?.readCurrentVolume()
             }
         }
+        volumeListenerBlock = block
 
         let status = AudioObjectAddPropertyListenerBlock(
-            defaultOutputDeviceID, &address, DispatchQueue.main, volumeListenerBlock!
+            defaultOutputDeviceID, &address, DispatchQueue.main, block
         )
 
         if status != noErr {
@@ -195,7 +196,7 @@ final class VolumeService: ObservableObject {
             mElement: kAudioObjectPropertyElementMain
         )
 
-        deviceChangeListenerBlock = { [weak self] _, _ in
+        let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             DispatchQueue.main.async {
                 guard let self else { return }
                 print("[MacIsland] Volume: Default output device changed, re-resolving...")
@@ -205,10 +206,11 @@ final class VolumeService: ObservableObject {
                 self.installVolumeChangeListener()
             }
         }
+        deviceChangeListenerBlock = block
 
         AudioObjectAddPropertyListenerBlock(
             AudioObjectID(kAudioObjectSystemObject),
-            &address, DispatchQueue.main, deviceChangeListenerBlock!
+            &address, DispatchQueue.main, block
         )
     }
 

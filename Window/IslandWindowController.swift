@@ -132,12 +132,14 @@ final class IslandWindowController: NSWindowController {
         let origin = ScreenUtility.centeredOrigin(forIslandWidth: dims.width, height: dims.height)
         let newFrame = NSRect(x: origin.x, y: origin.y, width: dims.width, height: dims.height)
 
-        // Animate the window frame change with a duration that roughly matches
-        // the SwiftUI interpolatingSpring. NSWindow.setFrame animation is separate
-        // from SwiftUI's, but a ~0.4s ease matches well visually.
+        // Match the SwiftUI interpolatingSpring timing more closely.
+        // Spring with stiffness 200, damping 18 settles in ~0.35s.
+        // Using a custom cubic bezier that mimics the spring's ease-out overshoot.
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.4
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            context.duration = 0.35
+            context.timingFunction = CAMediaTimingFunction(
+                controlPoints: 0.2, 0.9, 0.3, 1.0
+            )
             panel.animator().setFrame(newFrame, display: true)
         }
     }

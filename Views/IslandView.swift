@@ -97,22 +97,35 @@ struct IslandView: View {
 
     @ViewBuilder
     private var compactContent: some View {
-        switch viewModel.compactContentType {
-        case .notification:
-            notificationCompact
+        ZStack {
+            switch viewModel.compactContentType {
+            case .notification:
+                notificationCompact
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .id("notification")
 
-        case .timer:
-            TimerCompactView(timerService: viewModel.timerService)
+            case .timer:
+                TimerCompactView(timerService: viewModel.timerService)
+                    .transition(.opacity)
+                    .id("timer")
 
-        case .pomodoro:
-            PomodoroCompactView(pomodoroService: viewModel.pomodoroService)
+            case .pomodoro:
+                PomodoroCompactView(pomodoroService: viewModel.pomodoroService)
+                    .transition(.opacity)
+                    .id("pomodoro")
 
-        case .calendar:
-            CalendarCompactView(calendarService: viewModel.calendarService)
+            case .calendar:
+                CalendarCompactView(calendarService: viewModel.calendarService)
+                    .transition(.opacity)
+                    .id("calendar")
 
-        default:
-            mediaCompact
+            default:
+                mediaCompact
+                    .transition(.opacity)
+                    .id("media")
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.compactContentType.rawValue)
     }
 
     // MARK: - Media Compact
